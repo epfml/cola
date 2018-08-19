@@ -37,21 +37,20 @@ EPSILON_DATASET_PATH='/datasets/epsilon_normalized.bz2'
 world_size=20
 mpirun -n $world_size python scripts/run_cola.py \
     --split_by 'features' \
-    --max_global_steps 100 \
+    --max_global_steps 10 \
     --graph_topology 'complete' \
     --exit_time 1000.0 \
     --theta 1e-7 \
     --l1_ratio 1 \
     --lambda_ 1e-4 \
-    --local_iters 1.0 \
-    --logfile ${OUTPUT_DIR}/cola.csv\
-    --weightfile ${OUTPUT_DIR}/weight.npy\
-    --dataset_size 'all'\
-    --dataset_path ${EPSILON_DATASET_PATH}\
-    ${world_size} \
-    'epsilon'\
-    'ElasticNet'\
-    'cola'
+    --local_iters 10.0 \
+    --logfile ${OUTPUT_DIR}/cola.csv \
+    --weightfile ${OUTPUT_DIR}/weight_feature.npy \
+    --dataset_size 'all' \
+    --dataset_path ${EPSILON_DATASET_PATH} \
+    --dataset epsilon \
+    --solvername ElasticNet \
+    --algoritmname cola
 ```
 
 # Reference
@@ -81,7 +80,7 @@ If you want to use this code for research, please cite the following paper
     }
 
 
-We thanks [PyTorch](https://pytorch.org/) for the distributed communication module and [scikit-learn](http://scikit-learn.org/stable/) for the coordinate solver modules.
+We thank [PyTorch](https://pytorch.org/) for the distributed communication module and [scikit-learn](http://scikit-learn.org/stable/) for the coordinate solver modules.
 
     @inproceedings{sklearn_api,
       author    = {Lars Buitinck and Gilles Louppe and Mathieu Blondel and
