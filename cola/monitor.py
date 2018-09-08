@@ -1,3 +1,4 @@
+import os
 import time
 import pandas as pd
 import numpy as np
@@ -14,12 +15,16 @@ class Monitor(object):
     * save weight file and log files if specified;
     """
 
-    def __init__(self, solver, exit_time=None, split_by='samples', mode='local'):
+    def __init__(self, solver, output_dir, ckpt_freq, exit_time=None, split_by='samples', mode='local'):
         """
         Parameters
         ----------
         solver : CoCoASubproblemSolver
             a solver to be monitored.
+        output_dir : str
+            directory of output.
+        ckpt_freq : Int
+            frequency of the checkpoint.
         exit_time : float, optional
             exit if the program has been running for `exit_time`. (the default is None, which disable this criterion.)
         split_by : str, optional
@@ -39,6 +44,9 @@ class Monitor(object):
 
         self.records = []
         self.mode = mode
+        self.ckpt_freq = ckpt_freq
+        self.output_dir = output_dir
+        os.makedirs(output_dir, exist_ok=True)
 
         # If a problem is split by samples, then the total number of data points is unknown
         # in a local node. As a result, we will defer the division to the logging time.
@@ -132,13 +140,14 @@ class Monitor(object):
             print("Iter {i_iter:5}, Time {time:10.5e}: gap={gap:10.3e}, P={P:10.3e}, D={D:10.3e}, f={f:10.3e}, "
                   "g={g:10.3e}, f_conj={f_conj:10.3e}, g_conj={g_conj:10.3e}".format(**record))
 
-    def save(self, logfile, weightfile, Akxk, xk):
+    def save(self, Akxk, xk, weightname=None, logname=None):
         rank = self.rank
-        if rank == 0 and logfile:
+        if rank == 0 and logname:
+            logfile = os.path.join(self.output_dir, logname)
             pd.DataFrame(self.records).to_csv(logfile)
             print("Data has been save to {} on node 0".format(logfile))
 
-        if weightfile:
+        if weightname:
             if self.split_by_samples:
                 Akxk = torch.DoubleTensor(Akxk)
                 dist.reduce(Akxk, 0, op=dist.reduce_op.SUM)
@@ -160,5 +169,6 @@ class Monitor(object):
                 weight = weight.numpy()
 
             if rank == 0:
+                weightfile = os.path.join(self.output_dir, weightname)
                 weight.dump(weightfile)
                 print("Weight has been save to {} on node 0".format(weightfile))

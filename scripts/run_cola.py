@@ -14,8 +14,7 @@ from cola.monitor import Monitor
 @click.option('--dataset', type=click.STRING, help='The type of dataset.')
 @click.option('--solvername', type=click.STRING, help='The name of solvers.')
 @click.option('--algoritmname', type=click.STRING, help='The name of algorithm')
-@click.option('--logfile', type=click.STRING, default=None, help='Save metrics in the training.')
-@click.option('--weightfile', type=click.STRING, default=None, help='Save weights on rank 0.')
+@click.option('--output_dir', type=click.STRING, default=None, help='Save metrics in the training.')
 @click.option('--dataset_size', default='small', type=click.Choice(['small', 'all']), help='Size of dataset')
 @click.option('--logmode', default='local', type=click.Choice(['local', 'global']),
               help='Log local or global information.')
@@ -30,10 +29,11 @@ from cola.monitor import Monitor
 @click.option('--l1_ratio', type=float, help='l1 ratio in the ElasticNet')
 @click.option('--lambda_', type=float, help='Size of regularizer')
 @click.option('--c', type=float, help='Constant in the LinearSVM.')
+@click.option('--ckpt_freq', type=int, default=10, help='')
 @click.option('--exit_time', default=1000.0, help='The maximum running time of a node.')
 def main(dataset, dataset_path, dataset_size, split_by, random_state,
-         algoritmname, max_global_steps, local_iters, solvername, logfile, exit_time, lambda_, l1_ratio, theta,
-         graph_topology, c, weightfile, logmode):
+         algoritmname, max_global_steps, local_iters, solvername, output_dir, exit_time, lambda_, l1_ratio, theta,
+         graph_topology, c, logmode, ckpt_freq):
 
     # Fix gamma = 1.0 according to:
     #   Adding vs. Averaging in Distributed Primal-Dual Optimization
@@ -67,13 +67,13 @@ def main(dataset, dataset_path, dataset_size, split_by, random_state,
                               lambda_=lambda_, C=c, random_state=random_state)
 
     # Add hooks to log and save metrics.
-    monitor = Monitor(solver, exit_time, split_by, logmode)
+    monitor = Monitor(solver, output_dir, ckpt_freq, exit_time, split_by, logmode)
 
     # Always use this value throughout this project
     Akxk, xk = run_algorithm(algoritmname, X, y, solver, gamma, theta,
                              max_global_steps, local_iters, world_size, graph, monitor)
 
-    monitor.save(logfile, weightfile, Akxk, xk)
+    monitor.save(Akxk, xk, weightname='weight.npy', logname='result.csv')
 
 
 if __name__ == '__main__':

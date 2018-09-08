@@ -72,4 +72,7 @@ def cola(Ak, b, localsolver, gamma, theta, global_iters, local_iters, K, graph, 
         if monitor.log(averaged_v, Akxk, xk, i_iter, localsolver):
             break
 
+        if (i_iter % monitor.ckpt_freq) == 0:
+            monitor.save(Akxk, xk, weightname='weight_epoch_{}.npy'.format(i_iter))
+
     return Akxk, xk

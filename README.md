@@ -44,9 +44,9 @@ mpirun -n $world_size python scripts/run_cola.py \
     --l1_ratio 1 \
     --lambda_ 1e-4 \
     --local_iters 10.0 \
-    --logfile ${OUTPUT_DIR}/cola.csv \
-    --weightfile ${OUTPUT_DIR}/weight_feature.npy \
+    --output_dir ${OUTPUT_DIR} \
     --dataset_size 'all' \
+    --ckpt_freq 2 \
     --dataset_path ${EPSILON_DATASET_PATH} \
     --dataset epsilon \
     --solvername ElasticNet \
