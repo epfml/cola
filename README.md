@@ -1,5 +1,5 @@
 # CoLa
-Communication-Efficient Decentralized Linear Learning
+[Communication-Efficient Decentralized Linear Learning](https://arxiv.org/abs/1808.04883)
 
 ### Docker
 Build the docker image and set up the environment.
@@ -54,7 +54,7 @@ mpirun -n $world_size python scripts/run_cola.py \
 ```
 
 # Reference
-If you use this code, please cite the following paper
+If you use this code, please cite the following [paper](https://arxiv.org/abs/1808.04883)
 
     @inproceedings{cola2018nips,
        author = {He, L. and Bian, A. and Jaggi, M.},
