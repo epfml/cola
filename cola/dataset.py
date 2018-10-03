@@ -2,6 +2,8 @@ import os
 import numpy as np
 from joblib import Memory
 from scipy.sparse import vstack
+from scipy.sparse import csc_matrix
+from scipy.sparse import issparse
 
 from sklearn.datasets import make_classification
 from sklearn.datasets import load_svmlight_file
@@ -208,6 +210,45 @@ class Epsilon(object):
         return A_block, b, features_in_partition, n_blob, n_features
 
 
+class URL(object):
+    @staticmethod
+    def dist_read(rank, world_size, file, percent=0.1, split_by='features', random_state=42):
+        np.random.seed(random_state)
+        n_blob = int(2396130 * percent)
+        n_features = 3231961
+        zero_based = False
+        if split_by == 'features':
+            A_block, b, features_in_partition = dist_col_read_one(rank, world_size, n_blob, n_features, file,
+                                                                  zero_based, length=100*1024**2)
+        elif split_by == 'samples':
+            A_block, b, features_in_partition = dist_row_read_one(rank, world_size, n_blob, n_features, file,
+                                                                  zero_based, length=100*1024**2)
+        else:
+            raise NotImplementedError
+
+        return A_block, b, features_in_partition, 2396130, 3231961
+
+
+class Webspam(object):
+    @staticmethod
+    def dist_read(rank, world_size, file, percent=0.1, split_by='features', random_state=42):
+        np.random.seed(random_state)
+        n_blob = int(350000 * percent)
+        n_features = 16609143
+        zero_based = False
+        memory_persize = 100 * 1024 ** 2
+        if split_by == 'features':
+            A_block, b, features_in_partition = dist_col_read_one(
+                rank, world_size, n_blob, n_features, file, zero_based, length=memory_persize)
+        elif split_by == 'samples':
+            A_block, b, features_in_partition = dist_row_read_one(
+                rank, world_size, n_blob, n_features, file, zero_based, length=memory_persize)
+            A_block = A_block.T
+        else:
+            raise NotImplementedError
+        return A_block, b, features_in_partition, 350000, 16609143
+
+
 def rank_indices(n, rank, world_size, random_state):
     """Generate indices for a node"""
     np.random.seed(random_state)
@@ -263,16 +304,40 @@ def load_dataset(name, rank, world_size, dataset_size, split_by, dataset_path=No
     assert dataset_size in ['small', 'all']
     assert split_by in ['samples', 'features']
 
-    if name == 'test':
+    if name in ['test', 'test_sparse']:
         n_samples_test = 1000
         n_features_test = 100
         X, y = test(n_samples_test, n_features_test, rank, world_size, split_by=split_by, random_state=random_state)
+        if name == 'test_sparse':
+            X = csc_matrix(X)
     elif name == 'epsilon':
         percent = 0.1 if dataset_size == 'small' else 1
         X, y, features_in_partition, n_samples, n_features = Epsilon.dist_read(
             rank, world_size, dataset_path, percent=percent, split_by=split_by, random_state=random_state)
         X = X.toarray()
+    elif name == 'url':
+        percent = 0.1 if dataset_size == 'small' else 1
+        X, y, features_in_partition, n_samples, n_features = URL.dist_read(
+            rank, world_size, dataset_path, percent=percent, split_by=split_by, random_state=random_state)
+    elif name == 'webspam':
+        percent = 0.1 if dataset_size == 'small' else 1
+        X, y, features_in_partition, n_samples, n_features = Webspam.dist_read(
+            rank, world_size, dataset_path, percent=percent, split_by=split_by, random_state=random_state)
     else:
         raise NotImplementedError
+
+    # Transpose the matrix depending on the matrix split direction
+    if split_by == 'samples':
+        X = X.T
+
+    if isinstance(X, np.ndarray) and not X.flags['F_CONTIGUOUS']:
+        # The local coordinate solver (like scikit-learn's ElasticNet) requires X to be Fortran contiguous.
+        # Since the time spent on converting the matrix can be very long, and CoCoA need to call solvers every round,
+        # we perform such convertion before algorithm and disable check later.
+        X = np.asfortranarray(X)
+
+    if issparse(X):
+        # For coordinate descent
+        X = csc_matrix(X)
 
     return X, y

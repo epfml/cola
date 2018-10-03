@@ -248,6 +248,7 @@ class LinearSVM(CoCoASubproblemSolver):
 
     def standize_subproblem(self, v, w, Akxk):
         """Convert subproblem to a standard form so that local solver can solve."""
+        w = np.asarray(w)
         return self.Ak.T @ (self.sigma / self.tau * Akxk - w)
 
     def recover_solution(self):

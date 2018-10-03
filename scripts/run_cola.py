@@ -52,16 +52,6 @@ def main(dataset, dataset_path, dataset_size, split_by, random_state,
     X, y = load_dataset(dataset, rank, world_size, dataset_size, split_by,
                         dataset_path=dataset_path, random_state=random_state)
 
-    # Transpose the matrix depending on the matrix split direction
-    if split_by == 'samples':
-        X = X.T
-
-    if not X.flags['F_CONTIGUOUS']:
-        # The local coordinate solver (like scikit-learn's ElasticNet) requires X to be Fortran contiguous.
-        # Since the time spent on converting the matrix can be very long, and CoCoA need to call solvers every round,
-        # we perform such convertion before algorithm and disable check later.
-        X = np.asfortranarray(X)
-
     # Define subproblem
     solver = configure_solver(name=solvername, split_by=split_by, l1_ratio=l1_ratio,
                               lambda_=lambda_, C=c, random_state=random_state)
