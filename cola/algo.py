@@ -1,3 +1,4 @@
+r"""CoCoA family to use."""
 import warnings
 import numpy as np
 
@@ -5,6 +6,7 @@ from . import communication as comm
 
 
 def run_algorithm(algorithm, Ak, b, solver, gamma, theta, max_global_steps, local_iters, n_nodes, graph, monitor):
+    r"""Run cocoa family algorithms."""
     with warnings.catch_warnings():
         warnings.filterwarnings(
             "ignore",
@@ -13,12 +15,10 @@ def run_algorithm(algorithm, Ak, b, solver, gamma, theta, max_global_steps, loca
 
         comm.barrier()
         if algorithm == 'cola':
-            Akxk, xk = cola(Ak, b, solver, gamma, theta, max_global_steps, local_iters, n_nodes, graph, monitor)
+            Akxk, xk = cola(Ak, b, solver, gamma, theta,
+                            max_global_steps, local_iters, n_nodes, graph, monitor)
         elif algorithm == 'cocoa':
-            Akxk, xk = cocoa(A_partition, b, solver, gamma, theta, max_global_steps, local_iters, n_nodes)
-        elif algorithm == 'accelerated_cola':
-            Akxk, xk = accelerated_cola(Ak, b, solver, gamma, theta, max_global_steps,
-                                        local_iters, n_nodes, graph, monitor)
+            raise NotImplementedError()
         else:
             raise NotImplementedError()
     return Akxk, xk
@@ -40,7 +40,8 @@ def cola(Ak, b, localsolver, gamma, theta, global_iters, local_iters, K, graph, 
 
     # Keep a list of neighborhood and their estimates of v
     local_lookups = graph.get_neighborhood(rank)
-    local_vs = {node_id: np.zeros(n_rows) for node_id, _ in local_lookups.items()}
+    local_vs = {node_id: np.zeros(n_rows)
+                for node_id, _ in local_lookups.items()}
 
     sigma = gamma * K
     localsolver.dist_init(Ak, b, theta, local_iters, sigma)
@@ -72,6 +73,7 @@ def cola(Ak, b, localsolver, gamma, theta, global_iters, local_iters, K, graph, 
             break
 
         if (i_iter % monitor.ckpt_freq) == 0:
-            monitor.save(Akxk, xk, weightname='weight_epoch_{}.npy'.format(i_iter))
+            monitor.save(
+                Akxk, xk, weightname='weight_epoch_{}.npy'.format(i_iter))
 
     return Akxk, xk
