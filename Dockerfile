@@ -45,7 +45,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends wget \
     && apt-get remove -y wget
 
 ENV PATH /.openmpi/bin:$PATH
-ENV LD_LIBRARY_PATH /.openmpi/lib
+ENV LD_LIBRARY_PATH /.openmpi/lib:$LD_LIBRARY_PATH
 
 RUN mv /.openmpi/bin/mpirun /.openmpi/bin/mpirun.real && \
     echo '#!/bin/bash' > /.openmpi/bin/mpirun && \
@@ -62,43 +62,16 @@ RUN echo "hwloc_base_binding_policy = none" >> /.openmpi/etc/openmpi-mca-params.
 RUN echo export 'PATH=$HOME/conda/envs/pytorch-py$PYTHON_VERSION/bin:$HOME/.openmpi/bin:$PATH' >> ~/.bashrc
 RUN echo export 'LD_LIBRARY_PATH=$HOME/.openmpi/lib:$LD_LIBRARY_PATH' >> ~/.bashrc
 
-
-# -------------------- PyTorch --------------------
-ENV CMAKE_PREFIX_PATH="$(dirname $(which conda))/../"
-
-# Install basic dependencies
-# RUN git clone --recursive https://github.com/pytorch/pytorch && cd pytorch && python setup.py install
-RUN git clone --recursive https://github.com/pytorch/pytorch && \
-    cd pytorch && \
-    git submodule update --init && \
-    TORCH_CUDA_ARCH_LIST="3.5 3.7 5.2 6.0 6.1 7.0+PTX" TORCH_NVCC_FLAGS="-Xfatbin -compress-all" \
-    CMAKE_PREFIX_PATH="$(dirname $(which conda))/../" \
-    pip install -v . && \
-    rm -rf /pytorch
-
-
-RUN git clone https://github.com/pytorch/vision.git && cd vision && pip install -v .
-
-# RUN pip install -U git+https://github.com/ppwwyyxx/tensorpack.git
-
-
-# -------------------- patch --------------------
-# libGL.so.1 might be lost when nvidia driver is installed
-# sudo apt-get install freeglut3-dev build-essential libx11-dev libxmu-dev libxi-dev libgl1-mesa-glx libglu1-mesa libglu1-mesa-dev libglfw3-dev libgles2-mesa-dev
 RUN apt-get install -y libgl1-mesa-glx
 
 
 # -------------------- Others --------------------
 RUN echo "orte_keep_fqdn_hostnames=t" >> /.openmpi/etc/openmpi-mca-params.conf
 
-# RUN conda install -y -c anaconda cython
-# RUN conda install -y scikit-learn
 RUN pip install scikit-learn Cython
 RUN sudo apt-get install -y vim
 RUN pip install pandas click
 RUN pip install joblib
-
-
 
 # Copy your application code to the container (make sure you create a .dockerignore file if any large files or directories should be excluded)
 RUN mkdir /app/
