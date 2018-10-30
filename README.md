@@ -1,8 +1,17 @@
 # CoLa
-A Communication Efficient Decentralized Linear Learning.
+>A **Co**mmunication Efficient Framework For Decentralized **L**inear Le**a**rning.
 
-### Docker
-Build the docker image and set up the environment.
+Similar to [CoCoA](https://arxiv.org/abs/1611.02189), CoLa is communication efficient. Processes communicate with their neighborhood updates only after solving a local subproblem. The local solver can be approximate solvers: for coordinate solvers, we can control the number of coordinates chosen. In this project, we use scikit-learn or Cython to implement the local coordinate solver.
+
+CoLa extends [CoCoA](https://arxiv.org/abs/1611.02189) to the decentralized setting where the communication between processes are limited. This extension is non-trivial because
+
+* dataset cannot be shuffled across nodes;
+* there is no central server and not all of the p2p communication are avaiable;
+
+This leads to the heterogeneity in data distribution distribution and biased local updates. CoLa achieves linear rate for strongly convex objective and sublinear rate for general convex objective.
+
+## Installation
+Docker
 ```bash
 # Build docker images
 docker build -t cola .
@@ -16,16 +25,7 @@ docker run --rm -it \
     cola:latest bash
 ```
 
-### Dataset
-Download the dataset a local directory which will be mounted.
-```bash
-wget https://www.csie.ntu.edu.tw/\~cjlin/libsvmtools/datasets/binary/webspam_wc_normalized_trigram.svm.bz2
-wget https://www.csie.ntu.edu.tw/\~cjlin/libsvmtools/datasets/binary/epsilon_normalized.bz2
-wget https://www.csie.ntu.edu.tw/\~cjlin/libsvmtools/datasets/binary/url_original.tar.bz2
-wget https://www.csie.ntu.edu.tw/\~cjlin/libsvmtools/datasets/binary/url_combined.bz2
-```
-
-### Launch
+## Usage example
 Execute MPI jobs in docker.
 ```bash
 # Joblib can save the time spend on 
@@ -53,7 +53,26 @@ mpirun -n $world_size python scripts/run_cola.py \
     --algoritmname cola
 ```
 
-# Reference
+## Datasets
+Download the LIBSVM dataset for linear learning.
+```bash
+wget https://www.csie.ntu.edu.tw/\~cjlin/libsvmtools/datasets/binary/webspam_wc_normalized_trigram.svm.bz2
+wget https://www.csie.ntu.edu.tw/\~cjlin/libsvmtools/datasets/binary/epsilon_normalized.bz2
+wget https://www.csie.ntu.edu.tw/\~cjlin/libsvmtools/datasets/binary/url_original.tar.bz2
+wget https://www.csie.ntu.edu.tw/\~cjlin/libsvmtools/datasets/binary/url_combined.bz2
+```
+
+## Release History
+
+* 0.1.0
+    - The first proper release
+
+
+## License
+
+TBD.
+
+## Reference
 If you want to use this code for research, please cite the following paper
 
 * Smith, Virginia, et al. "CoCoA: A general framework for communication-efficient distributed optimization." Journal of Machine Learning Research 18 (2018): 230.
@@ -65,3 +84,5 @@ We thank [PyTorch](https://pytorch.org/) for the distributed communication modul
 * Buitinck, Lars, et al. "API design for machine learning software: experiences from the scikit-learn project." arXiv preprint arXiv:1309.0238 (2013).
 * Pedregosa, Fabian, et al. "Scikit-learn: Machine learning in Python." Journal of machine learning research 12.Oct (2011): 2825-2830.
 * Paszke, Adam, et al. "Automatic differentiation in pytorch." (2017).
+
+

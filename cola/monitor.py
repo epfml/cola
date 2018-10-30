@@ -2,9 +2,10 @@ import os
 import time
 import pandas as pd
 import numpy as np
-import torch
-import torch.distributed as dist
+# import torch
+# import torch.distributed as dist
 from .cocoasolvers import CoCoASubproblemSolver
+import cola.communication as comm
 
 
 class Monitor(object):
@@ -34,8 +35,9 @@ class Monitor(object):
              * `global` mode logs duality gap of the whole program. It takes more time to compute.
         """
         assert isinstance(solver, CoCoASubproblemSolver)
-        self.rank = dist.get_rank()
-        self.world_size = dist.get_world_size()
+        self.rank = comm.get_rank()
+        self.world_size = comm.get_world_size()
+
         self.solver = solver
 
         self.running_time = 0
@@ -52,15 +54,15 @@ class Monitor(object):
         # in a local node. As a result, we will defer the division to the logging time.
         self.split_by_samples = split_by == 'samples'
 
-    def _all_reduce_scalar(self, scalar, op):
-        tensor = torch.DoubleTensor([scalar])
-        dist.all_reduce(tensor, op=op)
-        return float(tensor[0])
+    # def _all_reduce_scalar(self, scalar, op):
+    #     tensor = torch.DoubleTensor([scalar])
+    #     comm.all_reduce(tensor, op=op)
+    #     return float(tensor[0])
 
-    def _all_reduce_tensor(self, tensor, op):
-        t = tensor.clone()
-        dist.all_reduce(t, op=op)
-        return t
+    # def _all_reduce_tensor(self, tensor, op):
+    #     t = tensor.clone()
+    #     comm.all_reduce(t, op=op)
+    #     return t
 
     def log(self, vk, Akxk, xk, i_iter, solver):
         # Skip the time for logging
@@ -77,7 +79,7 @@ class Monitor(object):
 
         self.previous_time = time.time()
 
-        max_running_time = self._all_reduce_scalar(self.running_time, op=dist.reduce_op.MAX)
+        max_running_time = comm.all_reduce(self.running_time, op='MAX')
         return max_running_time > self.exit_time
 
     def _log_local(self, vk, Akxk, xk, i_iter, solver):
@@ -101,24 +103,24 @@ class Monitor(object):
         record['time'] = self.running_time
 
         # v := A x
-        v = self._all_reduce_tensor(Akxk, dist.reduce_op.SUM)
+        v = comm.all_reduce(Akxk, op='SUM')
         w = self.solver.grad_f(v)
 
         # Compute squared norm of consensus violation
-        record['cv2'] = float(torch.norm(vk - v, 2) ** 2)
+        record['cv2'] = float(np.linalg.norm(vk - v, 2) ** 2)
 
         # Compute the value of minimizer objective
         val_gk = self.solver.gk(xk)
-        record['g'] = self._all_reduce_scalar(val_gk, dist.reduce_op.SUM)
+        record['g'] = comm.all_reduce(val_gk, 'SUM')
         record['f'] = self.solver.f(v)
 
         # Compute the value of conjugate objective
         val_gk_conj = self.solver.gk_conj(w)
         record['f_conj'] = self.solver.f_conj(w)
-        record['g_conj'] = self._all_reduce_scalar(val_gk_conj, op=dist.reduce_op.SUM)
+        record['g_conj'] = comm.all_reduce(val_gk_conj, op='SUM')
 
         if self.split_by_samples:
-            n_samples = self._all_reduce_scalar(len(solver.y), op=dist.reduce_op.SUM)
+            n_samples = comm.all_reduce(len(solver.y), op='SUM')
         else:
             n_samples = len(solver.y)
 
@@ -149,24 +151,19 @@ class Monitor(object):
 
         if weightname:
             if self.split_by_samples:
-                Akxk = torch.DoubleTensor(Akxk)
-                dist.reduce(Akxk, 0, op=dist.reduce_op.SUM)
-                weight = Akxk.numpy()
+                Akxk = comm.reduce(Akxk, root=0, op='SUM')
+                weight = Akxk
+
             else:
                 # If features are split, then concatenate xk's weight
-
                 size = [0] * self.world_size
                 size[rank] = len(xk)
-                size = torch.IntTensor(size)
-                dist.all_reduce(size, op=dist.reduce_op.SUM)
+                size = comm.all_reduce(size, op='SUM')
                 # the size is [len(x_0), len(x_1), ..., len(x_{K-1})]
-                size = size.numpy()
 
                 weight = np.zeros(sum(size))
                 weight[sum(size[:rank]): sum(size[:rank]) + len(xk)] = np.array(xk)
-                weight = torch.DoubleTensor(weight)
-                dist.reduce(weight, 0, op=dist.reduce_op.SUM)
-                weight = weight.numpy()
+                weight = comm.reduce(weight, root=0, op='SUM')
 
             if rank == 0:
                 weightfile = os.path.join(self.output_dir, weightname)

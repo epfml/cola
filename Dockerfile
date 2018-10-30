@@ -106,5 +106,6 @@ WORKDIR /app/
 ADD . /app/
 
 RUN make build && make install && make clean
+RUN env MPICC=/.openmpi/bin/mpicc pip install mpi4py
 ENV LC_ALL C.UTF-8
 ENV LANG C.UTF-8

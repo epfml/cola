@@ -185,7 +185,92 @@ class ElasticNet(CoCoASubproblemSolver):
 
     def standize_subproblem(self, v, w):
         """Convert subproblem to a standard form so that local solver can solve."""
-        import torch.distributed as dist
+        return v - self.tau / self.sigma * w
+
+    def recover_solution(self):
+        """From the standardized solution to original solution."""
+        return self.solver.coef_
+
+
+class LogisticRegression(CoCoASubproblemSolver):
+    r"""
+    Assume the original problem is
+        min_w \sum_{i=1}^n \log (\exp(-y_i X_i^T w) + 1)
+            + \lambda * n * l1_ratio * || w ||_1
+            + 0.5 * \lambda * n * (1 - l1_ratio) * || w ||_2^2
+
+    where y takes value in {-1, +1}.
+    """
+
+    def __init__(self, lambda_, l1_ratio, random_state):
+        super(LogisticRegression, self).__init__()
+        self.lambda_ = lambda_
+        self.l1_ratio = l1_ratio
+        self.random_state = random_state
+
+    def grad_f(self, v):
+        v = np.asarray(v)
+        return - self.y / (1 + np.exp(self.y * v))
+
+    def f(self, v):
+        v = np.asarray(v)
+        return (np.log(np.exp(- self.y * v) + 1)).sum()
+
+    def gk(self, xk):
+        xk = np.asarray(xk)
+        L1 = np.linalg.norm(xk, 1)
+        L2 = 0.5 * np.linalg.norm(xk, 2) ** 2
+        return self.lambda_ * len(self.y) * (self.l1_ratio * L1 + (1 - self.l1_ratio) * L2)
+
+    def f_conj(self, w):
+        w = np.asarray(w)
+        wy = w * self.y
+
+        out = (1 + wy) * np.log(1 + wy) - wy * np.log(-wy)
+        return out.sum()
+
+    def gk_conj(self, w):
+        """
+        Conjugate of Regularizer use Lemma 6 and Lemma 7 in 
+            L1-Regularized Distributed Optimization- A Communication-Efficient Primal-Dual Framework
+        """
+        w = np.asarray(w)
+        x = - w @ self.Ak
+        if self.l1_ratio < 1.0:
+            # Conjugate of ElasticNet (0 <= l1_ratio < 1)
+            def conjugate(x):
+                return np.sum(np.clip(np.abs(x) - self.l1_ratio, 0, np.inf) ** 2 / 2 / (1 - self.l1_ratio))
+        else:
+            # Lasso
+            def conjugate(x):
+                return self.B * np.sum(np.clip(np.abs(x) - 1, 0, np.inf))
+
+        c = self.lambda_ * len(self.y)
+        return c * conjugate(x / c)
+
+    @property
+    def solver_coef(self):
+        return self.solver.coef_
+
+    def dist_init(self, Ak, y, theta, local_iters, sigma):
+        super(LogisticRegression, self).dist_init(Ak, y, theta, local_iters, sigma)
+
+        # This constant is used to compute conjugate of modified L1 norm
+        self.B = self.f(np.zeros(len(self.y))) / self.lambda_
+
+    def load_approximate_solver(self, sigma, local_iters, theta):
+        """Load approximate solver to solve the standized problem."""
+        self._tau = 1
+
+        from fast_cd.solver import ElasticNetCoordSolver
+        self.solver = ElasticNetCoordSolver(
+            # lambda_=self.lambda_,
+            lambda_=self.tau / sigma * self.lambda_,
+            l1_ratio=self.l1_ratio, max_iter=local_iters,
+            tol=theta, warm_start=True, random_state=self.random_state)
+
+    def standize_subproblem(self, v, w):
+        """Convert subproblem to a standard form so that local solver can solve."""
         return v - self.tau / self.sigma * w
 
     def recover_solution(self):
@@ -290,6 +375,10 @@ def configure_solver(name, random_state, split_by, **params):
     elif name == 'LinearSVM':
         assert split_by == 'samples', 'This solver only works for splitting by samples'
         solver = LinearSVM(C=params['C'], random_state=random_state)
+    elif name == 'LogisticRegression':
+        assert split_by == 'features', 'This solver only works for splitting by features'
+        solver = LogisticRegression(lambda_=params['lambda_'], l1_ratio=params['l1_ratio'],
+                                    random_state=random_state)
     else:
         raise NotImplementedError
     return solver

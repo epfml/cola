@@ -277,7 +277,7 @@ class TwoDimGridGraph(UndirectedGraph):
             index_degree = degree(index)
             remaining_weight = 1
             for neighborhood_index in determine_neighborhood_index(index):
-                neighborhood_index_degree = degree(index)
+                neighborhood_index_degree = degree(neighborhood_index)
 
                 row.append(index)
                 col.append(neighborhood_index)
@@ -343,8 +343,8 @@ class NConnectedCycleGraph(UndirectedGraph):
 
     def _compute_beta(self, n):
 
-        # weight = 1 / (self.connectivity * 2 + 1)
-        weight = 1 / (self.connectivity * 2)
+        weight = 1 / (self.connectivity * 2 + 1)
+        # weight = 1 / (self.connectivity * 2)
         row = []
         col = []
         data = []
