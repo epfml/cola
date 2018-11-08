@@ -1,7 +1,10 @@
-# CoLa
-[Communication-Efficient Decentralized Linear Learning](https://arxiv.org/abs/1808.04883)
+# CoLa: Decentralized Linear Learning
 
-Similar to [CoCoA](https://arxiv.org/abs/1611.02189), CoLa is communication efficient. Processes communicate with their neighborhood updates only after solving a local subproblem. The local solver can be approximate solvers: for coordinate solvers, we can control the number of coordinates chosen. In this project, we use scikit-learn or Cython to implement the local coordinate solver.
+Decentralized machine learning is a promising emerging paradigm in view of global challenges of data ownership and privacy. We consider learning of linear classification and regression models, in the setting where the training data is decentralized over many user devices, and the learning algorithm must run on-device, on an arbitrary communication network, without a central coordinator. We propose COLA, a new decentralized training algorithm with strong theoretical guarantees and superior practical performance. Our framework overcomes many limitations of existing methods, and achieves communication efficiency, scalability, elasticity as well as resilience to changes in data and participating devices.
+
+[Paper appearing at NIPS 2018](https://arxiv.org/abs/1808.04883)
+
+The CoLa algorithm scheme is communication efficient, as is its centralized counterpart [CoCoA](https://arxiv.org/abs/1611.02189). Processes communicate with their neighborhood nodes only after working on a data-local subproblem for a flexible amount of time, before exchanging a single parameter vector with neighbor nodes. The local solver can be any existing approximate solver: we e.g. provide coordinate solver in our implementation, with flexible number of local coordinate updates, here calling scikit-learn or Cython. Communication between nodes is done via pytorch / MPI.
 
 ## Getting Started
 Build a docker image or pull an existing one from dockerhub
@@ -58,7 +61,7 @@ If you use this code, please cite the following [paper](https://arxiv.org/abs/18
 
     @inproceedings{cola2018nips,
        author = {He, L. and Bian, A. and Jaggi, M.},
-        title = "{COLA: Communication-Efficient Decentralized Linear Learning}",
+        title = "{COLA: Decentralized Linear Learning}",
       booktitle = {NIPS 2018 - Advances in Neural Information Processing Systems},
          year = 2018,
     }
