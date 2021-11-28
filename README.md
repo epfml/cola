@@ -27,6 +27,13 @@ wget https://www.csie.ntu.edu.tw/\~cjlin/libsvmtools/datasets/binary/epsilon_nor
 wget https://www.csie.ntu.edu.tw/\~cjlin/libsvmtools/datasets/binary/url_original.tar.bz2
 wget https://www.csie.ntu.edu.tw/\~cjlin/libsvmtools/datasets/binary/url_combined.bz2
 ```
+It is recommended to split the dataset based on the total number of workers using `split_dataset.py`, e.g.
+```
+python split_dataset.py \
+    --input_file /datasets/url_combined.bz2 \
+    --K 10 \
+    --outdir  /datasets/url_split
+```
 
 ### Launch
 Execute MPI jobs in docker.
@@ -38,7 +45,7 @@ URL_DATASET_PATH='/datasets/url_combined.bz2'
 EPSILON_DATASET_PATH='/datasets/epsilon_normalized.bz2'
 
 world_size=20
-mpirun -n $world_size python scripts/run_cola.py \
+mpirun -n $world_size --oversubscribe python run_cola.py \
     --split_by 'features' \
     --max_global_steps 10 \
     --graph_topology 'complete' \
@@ -55,6 +62,10 @@ mpirun -n $world_size python scripts/run_cola.py \
     --solvername ElasticNet \
     --algoritmname cola
 ```
+Note that
+- If the dataset is already split by `split_dataset.py`, then you can add flag `--use_split_dataset` and specify the `--dataset_path` to `outdir/samples/K/` or `outdir/features/K/`.
+- You can set `--dataset test` or `--dataset test_sparse` to debug the code.
+- 
 
 # Reference
 If you use this code, please cite the following [paper](https://arxiv.org/abs/1808.04883)

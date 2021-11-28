@@ -68,17 +68,24 @@ RUN apt-get install -y libgl1-mesa-glx
 # -------------------- Others --------------------
 RUN echo "orte_keep_fqdn_hostnames=t" >> /.openmpi/etc/openmpi-mca-params.conf
 
-RUN pip install scikit-learn Cython
 RUN sudo apt-get install -y vim
 RUN pip install pandas click
 RUN pip install joblib
 
-# Copy your application code to the container (make sure you create a .dockerignore file if any large files or directories should be excluded)
-RUN mkdir /app/
-WORKDIR /app/
-ADD . /app/
+RUN pip install Cython
+RUN pip install scikit-learn
+
+# # Copy your application code to the container (make sure you create a .dockerignore file if any large files or directories should be excluded)
+RUN mkdir /src/
+WORKDIR /src/
+ADD . /src/
 
 RUN make build && make install && make clean
 RUN env MPICC=/.openmpi/bin/mpicc pip install mpi4py
 ENV LC_ALL C.UTF-8
 ENV LANG C.UTF-8
+
+RUN mkdir /app/
+WORKDIR /app/
+ADD ./run_cola.py /app/
+ADD ./split_dataset.py /app/

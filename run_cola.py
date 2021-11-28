@@ -52,6 +52,7 @@ def main(dataset, dataset_path, dataset_size, use_split_dataset, split_by, rando
     graph = define_graph_topology(
         world_size, graph_topology, n_connectivity=n_connectivity)
 
+    print(f"=> Rank {rank}: Start loading dataset")
     if use_split_dataset:
         X, y = load_dataset_by_rank(dataset, rank, world_size, dataset_size, split_by,
                                     dataset_path=dataset_path, random_state=random_state)
@@ -59,19 +60,23 @@ def main(dataset, dataset_path, dataset_size, use_split_dataset, split_by, rando
         X, y = load_dataset(dataset, rank, world_size, dataset_size, split_by,
                             dataset_path=dataset_path, random_state=random_state)
 
+    print(f"=> Rank {rank}: Start defining subproblems")
     # Define subproblem
     solver = configure_solver(name=solvername, split_by=split_by, l1_ratio=l1_ratio,
                               lambda_=lambda_, C=c, random_state=random_state)
 
+    print(f"=> Rank {rank}: Adding monitor")
     # Add hooks to log and save metrics.
     monitor = Monitor(solver, output_dir, ckpt_freq,
                       exit_time, split_by, logmode)
 
+    print(f"=> Rank {rank}: Running algorithm")
     # Always use this value throughout this project
     Akxk, xk = run_algorithm(algoritmname, X, y, solver, gamma, theta,
                              max_global_steps, local_iters, world_size,
                              graph, monitor)
 
+    print(f"=> Rank {rank}: Saving output")
     monitor.save(Akxk, xk, weightname='weight.npy', logname='result.csv')
 
 
