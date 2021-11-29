@@ -87,11 +87,14 @@ class Monitor(object):
         record['i_iter'] = i_iter
         record['time'] = self.running_time
         try:
-            record['local_gap'] = self.solver.solver.gap_
+            if hasattr(self.solver.solver, "gap_"):
+                record['local_gap'] = self.solver.solver.gap_
+            else:
+                record['local_gap'] = self.solver.solver.dual_gap_
             record['n_iter_'] = self.solver.solver.n_iter_
         except:
-            record['local_gap'] = 0
-            record['n_iter_'] = 0
+            record['local_gap'] = "NA"
+            record['n_iter_'] = "NA"
 
         self.records.append(record)
 
